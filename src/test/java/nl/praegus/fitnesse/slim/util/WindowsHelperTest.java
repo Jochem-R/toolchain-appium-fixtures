@@ -30,7 +30,7 @@ public class WindowsHelperTest {
 
         verify(webDriver, times(1)).findElements(By.name("banaan"));
         verify(webDriver, times(1)).findElement(any(MobileBy.ByAccessibilityId.ByAccessibilityId.class));
-        verify(webDriver, times(1)).findElements(eq(By.xpath("//*[@Value='banaan' or @HelpText='banaan']")));
+        verify(webDriver, times(1)).findElements(eq(By.xpath("//*[@Name='banaan' or @HelpText='banaan' or @AutomationId = 'banaan' or @Value='banaan' ]")));
         verify(webDriver, times(1)).findElements(eq(By.xpath("//*[contains(@Name, 'banaan') or contains(@AutomationId, 'banaan') or contains(@Value, 'banaan') or contains(@HelpText, 'banaan')]")));
         verify(webDriver, times(1)).findElements(eq(By.name("banaan")));
     }

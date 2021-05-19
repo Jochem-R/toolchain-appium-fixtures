@@ -3,6 +3,7 @@ package nl.praegus.fitnesse.slim.fixtures;
 import fitnesse.slim.fixtureInteraction.FixtureInteraction;
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.MobileElement;
+import io.appium.java_client.MultiTouchAction;
 import io.appium.java_client.TouchAction;
 import io.appium.java_client.touch.WaitOptions;
 import io.appium.java_client.touch.offset.PointOption;
@@ -30,6 +31,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.openqa.selenium.*;
+import org.openqa.selenium.interactions.touch.TouchActions;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.Select;
 
@@ -94,33 +96,33 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         setImplicitFindInFramesTo(false);
     }
 
-    public boolean launchApp() {
-        getDriver().launchApp();
-        return true;
-    }
-
-    public boolean closeApp() {
-        getDriver().closeApp();
-        return true;
-    }
-
-    public void abortOnException(boolean abort) {
-        abortOnException = abort;
-    }
-
-    @Override
-    protected Throwable handleException(Method method, Object[] arguments, Throwable t) {
-        Throwable result = super.handleException(method, arguments, t);
-        if (abortOnException) {
-            String msg = result.getMessage();
-            if (msg.startsWith("message:<<") && msg.endsWith(">>")) {
-                msg = msg.substring(10, msg.length() - 2);
-            }
-            result = new StopTestException(false, msg);
-        }
-        return result;
-    }
-
+    //    public boolean launchApp() {
+//        getDriver().launchApp();
+//        return true;
+//    }
+//
+//    public boolean closeApp() {
+//        getDriver().closeApp();
+//        return true;
+//    }
+//
+//    public void abortOnException(boolean abort) {
+//        abortOnException = abort;
+//    }
+//
+//    @Override
+//    protected Throwable handleException(Method method, Object[] arguments, Throwable t) {
+//        Throwable result = super.handleException(method, arguments, t);
+//        if (abortOnException) {
+//            String msg = result.getMessage();
+//            if (msg.startsWith("message:<<") && msg.endsWith(">>")) {
+//                msg = msg.substring(10, msg.length() - 2);
+//            }
+//            result = new StopTestException(false, msg);
+//        }
+//        return result;
+//    }
+//
     public String savePageSource() {
         String fileName = "xmlView_" + System.currentTimeMillis();
         return savePageSource(fileName, fileName + ".xml");
@@ -142,6 +144,87 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
     public boolean waitForToContain(String place, String text) {
         T element = this.getElement(place, null);
         return null != element && element.getText().contains(text);
+    }
+    /**
+     * Zoom in screen
+     * Usage: | zoom in on| [targetPlace] | with offset | [offset] |
+     * @param targetPlace the location to pinch
+     * @param offset how many pixels the zoom should be
+     */
+    public boolean zoomInWith(String targetPlace, int offset) {
+        final int ANIMATION_TIME = 50; // ms
+        WebElement pinchTarget = this.getElement(targetPlace, null);
+
+        int x = pinchTarget.getLocation().getX() + pinchTarget.getSize().getWidth() / 2;
+        int y = pinchTarget.getLocation().getY() + pinchTarget.getSize().getHeight() / 2;
+
+        PointOption pinchPointOption1 = PointOption.point(x,y - 20);
+        PointOption pinchPointOption2 = PointOption.point(x,y + 20);
+        PointOption moveToOption1 = PointOption.point(x,y - offset);
+        PointOption moveToOption2 = PointOption.point(x,y + offset);
+
+        TouchAction finger1 = new TouchAction(getDriver());
+        finger1.press(pinchPointOption1).moveTo(moveToOption1).release();
+
+        TouchAction finger2 = new TouchAction(getDriver());
+        finger2.press(pinchPointOption2).moveTo(moveToOption2).release();
+
+        try {
+            new MultiTouchAction(getDriver())
+                    .add(finger1).add(finger2).perform();
+        } catch (Exception e) {
+            System.err.println("zoomInOnWith(): MultiTouchAction FAILED\n" + e.getMessage());
+            return false;
+        }
+
+        // always allow pinch action to complete
+        try {
+            Thread.sleep(ANIMATION_TIME);
+        } catch (InterruptedException e) {
+            // ignore
+        }
+        return true;
+    }
+
+    /**
+     * Zoom out screen
+     * Usage: | zoom out | [targetPlace] | with offset | [offset] |
+     * @param targetPlace the location to pinch
+     * @param offset how many pixels the zoom should be
+     */
+    public boolean zoomOutWith(String targetPlace, int offset) {
+        final int ANIMATION_TIME = 50; // ms
+        WebElement pinchTarget = this.getElement(targetPlace, null);
+
+        int x = pinchTarget.getLocation().getX() + pinchTarget.getSize().getWidth() / 2;
+        int y = pinchTarget.getLocation().getY() + pinchTarget.getSize().getHeight() / 2;
+
+        PointOption pinchPointOption1 = PointOption.point(x,y - offset);
+        PointOption pinchPointOption2 = PointOption.point(x,y + offset);
+        PointOption moveToOption1 = PointOption.point(x,y - 20);
+        PointOption moveToOption2 = PointOption.point(x,y + 20);
+
+        TouchAction finger1 = new TouchAction(getDriver());
+        finger1.press(pinchPointOption1).moveTo(moveToOption1).release();
+
+        TouchAction finger2 = new TouchAction(getDriver());
+        finger2.press(pinchPointOption2).moveTo(moveToOption2).release();
+
+        try {
+            new MultiTouchAction(getDriver())
+                    .add(finger1).add(finger2).perform();
+        } catch (Exception e) {
+            System.err.println("zoomOutOnWith(): MultiTouchAction FAILED\n" + e.getMessage());
+            return false;
+        }
+
+        // always allow pinch action to complete
+        try {
+            Thread.sleep(ANIMATION_TIME);
+        } catch (InterruptedException e) {
+            // ignore
+        }
+        return true;
     }
 
     /**
@@ -284,56 +367,56 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         return result;
     }
 
-    /**
-     * Called when an alert is either dismissed or accepted.
-     *
-     * @param accepted true if the alert was accepted, false if dismissed.
-     */
-    protected void onAlertHandled(boolean accepted) {
-        // if we were looking in nested frames, we could not go back to original frame
-        // because of the alert. Ensure we do so now the alert is handled.
-        appiumHelper.resetFrameDepthOnAlertError();
-    }
-
-    /**
-     * Activates main/top-level iframe (i.e. makes it the current frame).
-     */
-    public void switchToDefaultContent() {
-        appiumHelper.switchToDefaultContent();
-        clearSearchContext();
-    }
-
-    public Set<String> contexts() {
-        return getDriver().getContextHandles();
-    }
-
-    /**
-     * Activates specified child frame of current iframe.
-     *
-     * @param technicalSelector selector to find iframe.
-     * @return true if iframe was found.
-     */
-    public boolean switchToFrame(String technicalSelector) {
-        boolean result = false;
-        T iframe = appiumHelper.getElement(technicalSelector);
-        if (iframe != null) {
-            appiumHelper.switchToFrame(iframe);
-            result = true;
-        }
-        return result;
-    }
-
-    /**
-     * Activates parent frame of current iframe.
-     * Does nothing if when current frame is the main/top-level one.
-     */
-    public void switchToParentFrame() {
-        appiumHelper.switchToParentFrame();
-    }
-
-    public String pageTitle() {
-        return appiumHelper.getPageTitle();
-    }
+//    /**
+//     * Called when an alert is either dismissed or accepted.
+//     *
+//     * @param accepted true if the alert was accepted, false if dismissed.
+//     */
+//    protected void onAlertHandled(boolean accepted) {
+//        // if we were looking in nested frames, we could not go back to original frame
+//        // because of the alert. Ensure we do so now the alert is handled.
+//        appiumHelper.resetFrameDepthOnAlertError();
+//    }
+//
+//    /**
+//     * Activates main/top-level iframe (i.e. makes it the current frame).
+//     */
+//    public void switchToDefaultContent() {
+//        appiumHelper.switchToDefaultContent();
+//        clearSearchContext();
+//    }
+//
+//    public Set<String> contexts() {
+//        return getDriver().getContextHandles();
+//    }
+//
+//    /**
+//     * Activates specified child frame of current iframe.
+//     *
+//     * @param technicalSelector selector to find iframe.
+//     * @return true if iframe was found.
+//     */
+//    public boolean switchToFrame(String technicalSelector) {
+//        boolean result = false;
+//        T iframe = appiumHelper.getElement(technicalSelector);
+//        if (iframe != null) {
+//            appiumHelper.switchToFrame(iframe);
+//            result = true;
+//        }
+//        return result;
+//    }
+//
+//    /**
+//     * Activates parent frame of current iframe.
+//     * Does nothing if when current frame is the main/top-level one.
+//     */
+//    public void switchToParentFrame() {
+//        appiumHelper.switchToParentFrame();
+//    }
+//
+//    public String pageTitle() {
+//        return appiumHelper.getPageTitle();
+//    }
 
     /**
      * Replaces content at place by value.
@@ -411,28 +494,28 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         return result;
     }
 
-    @WaitUntil
-    public boolean enterDateAs(String date, String place) {
-        WebElement element = getElementToSendValue(place);
-        boolean result = element != null && appiumHelper.isInteractable(element);
-        if (result) {
-            appiumHelper.fillDateInput(element, date);
-        }
-        return result;
-    }
-
-    protected T getElementToSendValue(String place) {
-        return getElement(place, null);
-    }
-
-    /**
-     * Simulates pressing the 'Tab' key.
-     *
-     * @return true, if an element was active the key could be sent to.
-     */
-    public boolean pressTab() {
-        return sendKeysToActiveElement(Keys.TAB);
-    }
+//    @WaitUntil
+//    public boolean enterDateAs(String date, String place) {
+//        WebElement element = getElementToSendValue(place);
+//        boolean result = element != null && appiumHelper.isInteractable(element);
+//        if (result) {
+//            appiumHelper.fillDateInput(element, date);
+//        }
+//        return result;
+//    }
+//
+//    protected T getElementToSendValue(String place) {
+//        return getElement(place, null);
+//    }
+//
+//    /**
+//     * Simulates pressing the 'Tab' key.
+//     *
+//     * @return true, if an element was active the key could be sent to.
+//     */
+//    public boolean pressTab() {
+//        return sendKeysToActiveElement(Keys.TAB);
+//    }
 
     /**
      * Simulates pressing the 'Enter' key.
@@ -443,15 +526,15 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         return sendKeysToActiveElement(Keys.ENTER);
     }
 
-    /**
-     * Simulates pressing the 'Esc' key.
-     *
-     * @return true, if an element was active the key could be sent to.
-     */
-    public boolean pressEsc() {
-        return sendKeysToActiveElement(Keys.ESCAPE);
-    }
-
+//    /**
+//     * Simulates pressing the 'Esc' key.
+//     *
+//     * @return true, if an element was active the key could be sent to.
+//     */
+//    public boolean pressEsc() {
+//        return sendKeysToActiveElement(Keys.ESCAPE);
+//    }
+//
     /**
      * Simulates typing a text to the current active element.
      *
@@ -462,51 +545,51 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         String value = cleanupValue(text);
         return sendKeysToActiveElement(value);
     }
-
-    /**
-     * Simulates pressing a key (or a combination of keys).
-     * (Unfortunately not all combinations seem to be accepted by all drivers, e.g.
-     *
-     * @param key key to press, can be a normal letter (e.g. 'M') or a special key (e.g. 'down').
-     *            Combinations can be passed by separating the keys to send with '+' (e.g. Command + T).
-     * @return true, if an element was active the key could be sent to.
-     */
-    public boolean press(String key) {
-        CharSequence s;
-        String[] parts = key.split("\\s*\\+\\s*");
-        if (parts.length > 1
-                && !"".equals(parts[0]) && !"".equals(parts[1])) {
-            CharSequence[] sequence = new CharSequence[parts.length];
-            for (int i = 0; i < parts.length; i++) {
-                sequence[i] = parseKey(parts[i]);
-            }
-            s = Keys.chord(sequence);
-        } else {
-            s = parseKey(key);
-        }
-
-        return sendKeysToActiveElement(s);
-    }
-
-    /** Simulate the back button. In iOS this is the browser's back button, or the app's if availabe.
-     * In android this simulates the (physical) back button
-     */
-    public void pressBackButton() {
-        getDriver().navigate().back();
-    }
-
-    protected CharSequence parseKey(String key) {
-        CharSequence s;
-        try {
-            s = Keys.valueOf(key.toUpperCase());
-            if (Keys.CONTROL.equals(s) && sendCommandForControlOnMac) {
-                s = appiumHelper.getControlOrCommand();
-            }
-        } catch (IllegalArgumentException e) {
-            s = key;
-        }
-        return s;
-    }
+//
+//    /**
+//     * Simulates pressing a key (or a combination of keys).
+//     * (Unfortunately not all combinations seem to be accepted by all drivers, e.g.
+//     *
+//     * @param key key to press, can be a normal letter (e.g. 'M') or a special key (e.g. 'down').
+//     *            Combinations can be passed by separating the keys to send with '+' (e.g. Command + T).
+//     * @return true, if an element was active the key could be sent to.
+//     */
+//    public boolean press(String key) {
+//        CharSequence s;
+//        String[] parts = key.split("\\s*\\+\\s*");
+//        if (parts.length > 1
+//                && !"".equals(parts[0]) && !"".equals(parts[1])) {
+//            CharSequence[] sequence = new CharSequence[parts.length];
+//            for (int i = 0; i < parts.length; i++) {
+//                sequence[i] = parseKey(parts[i]);
+//            }
+//            s = Keys.chord(sequence);
+//        } else {
+//            s = parseKey(key);
+//        }
+//
+//        return sendKeysToActiveElement(s);
+//    }
+//
+//    /** Simulate the back button. In iOS this is the browser's back button, or the app's if available.
+//     * In android this simulates the (physical) back button
+//     */
+//    public void pressBackButton() {
+//        getDriver().navigate().back();
+//    }
+//
+//    protected CharSequence parseKey(String key) {
+//        CharSequence s;
+//        try {
+//            s = Keys.valueOf(key.toUpperCase());
+//            if (Keys.CONTROL.equals(s) && sendCommandForControlOnMac) {
+//                s = appiumHelper.getControlOrCommand();
+//            }
+//        } catch (IllegalArgumentException e) {
+//            s = key;
+//        }
+//        return s;
+//    }
 
     /**
      * Simulates pressing keys.
@@ -537,36 +620,36 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         }
     }
 
-    @WaitUntil
-    public boolean selectAs(String value, String place) {
-        WebElement element = appiumHelper.getElement(place);
-        Select select = new Select(element);
-        if (select.isMultiple()) {
-            select.deselectAll();
-        }
-        return clickSelectOption(element, value);
-    }
-
-    @WaitUntil
-    public boolean selectAsIn(String value, String place, String container) {
-        return Boolean.TRUE.equals(doInContainer(container, () -> selectAs(value, place)));
-    }
-
-    @WaitUntil
-    public boolean selectFor(String value, String place) {
-        WebElement element = appiumHelper.getElement(place);
-        return clickSelectOption(element, value);
-    }
-
-    @WaitUntil
-    public boolean selectForIn(String value, String place, String container) {
-        return Boolean.TRUE.equals(doInContainer(container, () -> selectFor(value, place)));
-    }
-
-    @WaitUntil
-    public boolean enterForHidden(String value, String idOrName) {
-        return appiumHelper.setHiddenInputValue(idOrName, value);
-    }
+//    @WaitUntil
+//    public boolean selectAs(String value, String place) {
+//        WebElement element = appiumHelper.getElement(place);
+//        Select select = new Select(element);
+//        if (select.isMultiple()) {
+//            select.deselectAll();
+//        }
+//        return clickSelectOption(element, value);
+//    }
+//
+//    @WaitUntil
+//    public boolean selectAsIn(String value, String place, String container) {
+//        return Boolean.TRUE.equals(doInContainer(container, () -> selectAs(value, place)));
+//    }
+//
+//    @WaitUntil
+//    public boolean selectFor(String value, String place) {
+//        WebElement element = appiumHelper.getElement(place);
+//        return clickSelectOption(element, value);
+//    }
+//
+//    @WaitUntil
+//    public boolean selectForIn(String value, String place, String container) {
+//        return Boolean.TRUE.equals(doInContainer(container, () -> selectFor(value, place)));
+//    }
+//
+//    @WaitUntil
+//    public boolean enterForHidden(String value, String idOrName) {
+//        return appiumHelper.setHiddenInputValue(idOrName, value);
+//    }
 
     protected boolean clickSelectOption(WebElement element, String optionValue) {
         if (element != null && isSelect(element)) {
@@ -592,20 +675,20 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         return result;
     }
 
-    @WaitUntil(TimeoutPolicy.RETURN_FALSE)
-    public boolean clickIfAvailable(String place) {
-        return clickIfAvailableIn(place, null);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_FALSE)
-    public boolean clickIfAvailableIn(String place, String container) {
-        return click(place, container);
-    }
-
-    @WaitUntil
-    public boolean clickIn(String place, String container) {
-        return click(place, container);
-    }
+//    @WaitUntil(TimeoutPolicy.RETURN_FALSE)
+//    public boolean clickIfAvailable(String place) {
+//        return clickIfAvailableIn(place, null);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_FALSE)
+//    public boolean clickIfAvailableIn(String place, String container) {
+//        return click(place, container);
+//    }
+//
+//    @WaitUntil
+//    public boolean clickIn(String place, String container) {
+//        return click(place, container);
+//    }
 
     @WaitUntil
     public boolean click(String place) {
@@ -617,63 +700,63 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         return clickElement(element);
     }
 
-    @WaitUntil
-    public boolean doubleClick(String place) {
-        return doubleClickIn(place, null);
-    }
-
-    @WaitUntil
-    public boolean doubleClickIn(String place, String container) {
-        WebElement element = getElementToClick(cleanupValue(place), container);
-        return doubleClick(element);
-    }
-
-    protected boolean doubleClick(WebElement element) {
-        return doIfInteractable(element, () -> appiumHelper.doubleClick(element));
-    }
-
-    public void setSendCommandForControlOnMacTo(boolean sendCommand) {
-        sendCommandForControlOnMac = sendCommand;
-    }
-
-    public boolean sendCommandForControlOnMac() {
-        return sendCommandForControlOnMac;
-    }
-
-    protected Keys controlKey() {
-        return sendCommandForControlOnMac ? appiumHelper.getControlOrCommand() : Keys.CONTROL;
-    }
-
-    @WaitUntil
-    public boolean dragAndDropTo(String source, String destination) {
-        WebElement sourceElement = appiumHelper.getElementToClick(cleanupValue(source));
-        WebElement destinationElement = appiumHelper.getElementToClick(cleanupValue(destination));
-
-        if ((sourceElement != null) && (destinationElement != null)) {
-            scrollIfNotOnScreen(sourceElement);
-            if (appiumHelper.isInteractable(sourceElement) && destinationElement.isDisplayed()) {
-                appiumHelper.dragAndDrop(sourceElement, destinationElement);
-                return true;
-            }
-        }
-        return false;
-    }
+//    @WaitUntil
+//    public boolean doubleClick(String place) {
+//        return doubleClickIn(place, null);
+//    }
+//
+//    @WaitUntil
+//    public boolean doubleClickIn(String place, String container) {
+//        WebElement element = getElementToClick(cleanupValue(place), container);
+//        return doubleClick(element);
+//    }
+//
+//    protected boolean doubleClick(WebElement element) {
+//        return doIfInteractable(element, () -> appiumHelper.doubleClick(element));
+//    }
+//
+//    public void setSendCommandForControlOnMacTo(boolean sendCommand) {
+//        sendCommandForControlOnMac = sendCommand;
+//    }
+//
+//    public boolean sendCommandForControlOnMac() {
+//        return sendCommandForControlOnMac;
+//    }
+//
+//    protected Keys controlKey() {
+//        return sendCommandForControlOnMac ? appiumHelper.getControlOrCommand() : Keys.CONTROL;
+//    }
+//
+//    @WaitUntil
+//    public boolean dragAndDropTo(String source, String destination) {
+//        WebElement sourceElement = appiumHelper.getElementToClick(cleanupValue(source));
+//        WebElement destinationElement = appiumHelper.getElementToClick(cleanupValue(destination));
+//
+//        if ((sourceElement != null) && (destinationElement != null)) {
+//            scrollIfNotOnScreen(sourceElement);
+//            if (appiumHelper.isInteractable(sourceElement) && destinationElement.isDisplayed()) {
+//                appiumHelper.dragAndDrop(sourceElement, destinationElement);
+//                return true;
+//            }
+//        }
+//        return false;
+//    }
 
     protected T getElementToClick(String place, String container) {
         return doInContainer(container, () -> appiumHelper.getElementToClick(place));
     }
 
-    /**
-     * Convenience method to create custom heuristics in subclasses.
-     *
-     * @param container container to use (use <code>null</code> for current container), can be a technical selector.
-     * @param place     place to look for inside container, can be a technical selector.
-     * @param suppliers suppliers that will be used in turn until an element is found, IF place is not a technical selector.
-     * @return first hit of place, technical selector or result of first supplier that provided result.
-     */
-    protected T findFirstInContainer(String container, String place, Supplier<? extends T>... suppliers) {
-        return doInContainer(container, () -> appiumHelper.findByTechnicalSelectorOr(place, suppliers));
-    }
+//    /**
+//     * Convenience method to create custom heuristics in subclasses.
+//     *
+//     * @param container container to use (use <code>null</code> for current container), can be a technical selector.
+//     * @param place     place to look for inside container, can be a technical selector.
+//     * @param suppliers suppliers that will be used in turn until an element is found, IF place is not a technical selector.
+//     * @return first hit of place, technical selector or result of first supplier that provided result.
+//     */
+//    protected T findFirstInContainer(String container, String place, Supplier<? extends T>... suppliers) {
+//        return doInContainer(container, () -> appiumHelper.findByTechnicalSelectorOr(place, suppliers));
+//    }
 
     protected <R> R doInContainer(String container, Supplier<R> action) {
         if (container == null) {
@@ -742,75 +825,75 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         return result;
     }
 
-    @WaitUntil(TimeoutPolicy.STOP_TEST)
-    public boolean waitForPage(String pageName) {
-        return pageTitle().equals(pageName);
-    }
-
-    public boolean waitForTagWithText(String tagName, String expectedText) {
-        return waitForElementWithText(By.tagName(tagName), expectedText);
-    }
-
-    public boolean waitForClassWithText(String cssClassName, String expectedText) {
-        return waitForElementWithText(By.className(cssClassName), expectedText);
-    }
-
-    protected boolean waitForElementWithText(By by, String expectedText) {
-        String textToLookFor = cleanExpectedValue(expectedText);
-        return waitUntilOrStop(webDriver -> {
-            boolean ok = false;
-
-            List<WebElement> elements = webDriver.findElements(by);
-            if (elements != null) {
-                for (WebElement element : elements) {
-                    // we don't want stale elements to make single
-                    // element false, but instead we stop processing
-                    // current list and do a new findElements
-                    ok = hasText(element, textToLookFor);
-                    if (ok) {
-                        // no need to continue to check other elements
-                        break;
-                    }
-                }
-            }
-            return ok;
-        });
-    }
-
-    protected String cleanExpectedValue(String expectedText) {
-        return cleanupValue(expectedText);
-    }
-
-    protected boolean hasText(WebElement element, String textToLookFor) {
-        boolean ok;
-        String actual = getElementText(element);
-        if (textToLookFor == null) {
-            ok = actual == null;
-        } else {
-            if (StringUtils.isEmpty(actual)) {
-                String value = element.getAttribute("value");
-                if (!StringUtils.isEmpty(value)) {
-                    actual = value;
-                }
-            }
-            if (actual != null) {
-                actual = actual.trim();
-            }
-            ok = textToLookFor.equals(actual);
-        }
-        return ok;
-    }
-
-    @WaitUntil(TimeoutPolicy.STOP_TEST)
-    public boolean waitForClass(String cssClassName) {
-        boolean ok = false;
-
-        WebElement element = appiumHelper.findElement(By.className(cssClassName));
-        if (element != null) {
-            ok = true;
-        }
-        return ok;
-    }
+//    @WaitUntil(TimeoutPolicy.STOP_TEST)
+//    public boolean waitForPage(String pageName) {
+//        return pageTitle().equals(pageName);
+//    }
+//
+//    public boolean waitForTagWithText(String tagName, String expectedText) {
+//        return waitForElementWithText(By.tagName(tagName), expectedText);
+//    }
+//
+//    public boolean waitForClassWithText(String cssClassName, String expectedText) {
+//        return waitForElementWithText(By.className(cssClassName), expectedText);
+//    }
+//
+//    protected boolean waitForElementWithText(By by, String expectedText) {
+//        String textToLookFor = cleanExpectedValue(expectedText);
+//        return waitUntilOrStop(webDriver -> {
+//            boolean ok = false;
+//
+//            List<WebElement> elements = webDriver.findElements(by);
+//            if (elements != null) {
+//                for (WebElement element : elements) {
+//                    // we don't want stale elements to make single
+//                    // element false, but instead we stop processing
+//                    // current list and do a new findElements
+//                    ok = hasText(element, textToLookFor);
+//                    if (ok) {
+//                        // no need to continue to check other elements
+//                        break;
+//                    }
+//                }
+//            }
+//            return ok;
+//        });
+//    }
+//
+//    protected String cleanExpectedValue(String expectedText) {
+//        return cleanupValue(expectedText);
+//    }
+//
+//    protected boolean hasText(WebElement element, String textToLookFor) {
+//        boolean ok;
+//        String actual = getElementText(element);
+//        if (textToLookFor == null) {
+//            ok = actual == null;
+//        } else {
+//            if (StringUtils.isEmpty(actual)) {
+//                String value = element.getAttribute("value");
+//                if (!StringUtils.isEmpty(value)) {
+//                    actual = value;
+//                }
+//            }
+//            if (actual != null) {
+//                actual = actual.trim();
+//            }
+//            ok = textToLookFor.equals(actual);
+//        }
+//        return ok;
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.STOP_TEST)
+//    public boolean waitForClass(String cssClassName) {
+//        boolean ok = false;
+//
+//        WebElement element = appiumHelper.findElement(By.className(cssClassName));
+//        if (element != null) {
+//            ok = true;
+//        }
+//        return ok;
+//    }
 
     @WaitUntil(TimeoutPolicy.STOP_TEST)
     public boolean waitForVisible(String place) {
@@ -848,92 +931,92 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         return valueFor(element);
     }
 
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public String normalizedValueOf(String place) {
-        return normalizedValueFor(place);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public String normalizedValueFor(String place) {
-        return normalizedValueForIn(place, null);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public String normalizedValueOfIn(String place, String container) {
-        return normalizedValueForIn(place, container);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public String normalizedValueForIn(String place, String container) {
-        String value = valueForIn(place, container);
-        return normalizeValue(value);
-    }
-
-    protected List<String> normalizeValues(List<String> values) {
-        if (values != null) {
-            for (int i = 0; i < values.size(); i++) {
-                String value = values.get(i);
-                String normalized = normalizeValue(value);
-                values.set(i, normalized);
-            }
-        }
-        return values;
-    }
-
-    protected String normalizeValue(String value) {
-        String text = XPathBy.getNormalizedText(value);
-        if (text != null && trimOnNormalize) {
-            text = text.trim();
-        }
-        return text;
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public String tooltipFor(String place) {
-        return tooltipForIn(place, null);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public String tooltipForIn(String place, String container) {
-        return valueOfAttributeOnIn("title", place, container);
-    }
-
-    @WaitUntil
-    public String targetOfLink(String place) {
-        WebElement linkElement = appiumHelper.getLink(place);
-        return getLinkTarget(linkElement);
-    }
-
-    protected String getLinkTarget(WebElement linkElement) {
-        String target = null;
-        if (linkElement != null) {
-            target = linkElement.getAttribute("href");
-            if (target == null) {
-                target = linkElement.getAttribute("src");
-            }
-        }
-        return target;
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public String valueOfAttributeOn(String attribute, String place) {
-        return valueOfAttributeOnIn(attribute, place, null);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public String valueOfAttributeOnIn(String attribute, String place, String container) {
-        String result = null;
-        WebElement element = getElement(place, container);
-        if (element != null) {
-            result = element.getAttribute(attribute);
-        }
-        return result;
-    }
-
-    protected String valueFor(By by) {
-        WebElement element = appiumHelper.findElement(by);
-        return valueFor(element);
-    }
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public String normalizedValueOf(String place) {
+//        return normalizedValueFor(place);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public String normalizedValueFor(String place) {
+//        return normalizedValueForIn(place, null);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public String normalizedValueOfIn(String place, String container) {
+//        return normalizedValueForIn(place, container);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public String normalizedValueForIn(String place, String container) {
+//        String value = valueForIn(place, container);
+//        return normalizeValue(value);
+//    }
+//
+//    protected List<String> normalizeValues(List<String> values) {
+//        if (values != null) {
+//            for (int i = 0; i < values.size(); i++) {
+//                String value = values.get(i);
+//                String normalized = normalizeValue(value);
+//                values.set(i, normalized);
+//            }
+//        }
+//        return values;
+//    }
+//
+//    protected String normalizeValue(String value) {
+//        String text = XPathBy.getNormalizedText(value);
+//        if (text != null && trimOnNormalize) {
+//            text = text.trim();
+//        }
+//        return text;
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public String tooltipFor(String place) {
+//        return tooltipForIn(place, null);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public String tooltipForIn(String place, String container) {
+//        return valueOfAttributeOnIn("title", place, container);
+//    }
+//
+//    @WaitUntil
+//    public String targetOfLink(String place) {
+//        WebElement linkElement = appiumHelper.getLink(place);
+//        return getLinkTarget(linkElement);
+//    }
+//
+//    protected String getLinkTarget(WebElement linkElement) {
+//        String target = null;
+//        if (linkElement != null) {
+//            target = linkElement.getAttribute("href");
+//            if (target == null) {
+//                target = linkElement.getAttribute("src");
+//            }
+//        }
+//        return target;
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public String valueOfAttributeOn(String attribute, String place) {
+//        return valueOfAttributeOnIn(attribute, place, null);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public String valueOfAttributeOnIn(String attribute, String place, String container) {
+//        String result = null;
+//        WebElement element = getElement(place, container);
+//        if (element != null) {
+//            result = element.getAttribute(attribute);
+//        }
+//        return result;
+//    }
+//
+//    protected String valueFor(By by) {
+//        WebElement element = appiumHelper.findElement(by);
+//        return valueFor(element);
+//    }
 
     protected String valueFor(WebElement element) {
         String result = null;
@@ -964,220 +1047,220 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         return s.getFirstSelectedOption();
     }
 
-    protected List<WebElement> getSelectedOptions(WebElement selectElement) {
-        SelectHelper s = new SelectHelper(selectElement);
-        return s.getAllSelectedOptions();
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public List<String> valuesOf(String place) {
-        return valuesFor(place);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public List<String> valuesOfIn(String place, String container) {
-        return valuesForIn(place, container);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public List<String> valuesFor(String place) {
-        return valuesForIn(place, null);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public List<String> valuesForIn(String place, String container) {
-        WebElement element = getElement(place, container);
-        if (element == null) {
-            return emptyList();
-        } else if ("ul".equalsIgnoreCase(element.getTagName()) || "ol".equalsIgnoreCase(element.getTagName())) {
-            return getValuesFromList(element);
-        } else if (isSelect(element)) {
-            return getValuesFromSelect(element);
-        } else {
-            return singletonList(valueFor(element));
-        }
-    }
-
-    private List<String> getValuesFromList(WebElement element) {
-        ArrayList<String> values = new ArrayList<>();
-        List<WebElement> items = element.findElements(By.tagName("li"));
-        for (WebElement item : items) {
-            if (item.isDisplayed()) {
-                values.add(getElementText(item));
-            }
-        }
-        return values;
-    }
-
-    private List<String> getValuesFromSelect(WebElement element) {
-        ArrayList<String> values = new ArrayList<>();
-        List<WebElement> options = getSelectedOptions(element);
-        for (WebElement item : options) {
-            values.add(getElementText(item));
-        }
-        return values;
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public List<String> normalizedValuesOf(String place) {
-        return normalizedValuesFor(place);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public List<String> normalizedValuesOfIn(String place, String container) {
-        return normalizedValuesForIn(place, container);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public List<String> normalizedValuesFor(String place) {
-        return normalizedValuesForIn(place, null);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public List<String> normalizedValuesForIn(String place, String container) {
-        List<String> values = valuesForIn(place, container);
-        return normalizeValues(values);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public Integer numberFor(String place) {
-        Integer number = null;
-        WebElement element = appiumHelper.findElement(ListItemBy.numbered(place));
-        if (element != null) {
-            scrollIfNotOnScreen(element);
-            number = appiumHelper.getNumberFor(element);
-        }
-        return number;
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public Integer numberForIn(String place, String container) {
-        return doInContainer(container, () -> numberFor(place));
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public List<String> availableOptionsFor(String place) {
-        ArrayList<String> result = null;
-        WebElement element = appiumHelper.getElement(place);
-        if (element != null) {
-            scrollIfNotOnScreen(element);
-            result = appiumHelper.getAvailableOptions(element);
-        }
-        return result;
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public List<String> normalizedAvailableOptionsFor(String place) {
-        return normalizeValues(availableOptionsFor(place));
-    }
-
-    @WaitUntil
-    public boolean clear(String place) {
-        return clearIn(place, null);
-    }
-
-    @WaitUntil
-    public boolean clearIn(String place, String container) {
-        WebElement element = getElement(place, container);
-        if (element != null) {
-            return clear(element);
-        }
-        return false;
-    }
-
-    @WaitUntil
-    public boolean enterAsInRowWhereIs(String value, String requestedColumnName, String selectOnColumn, String selectOnValue) {
-        By cellBy = GridBy.columnInRowWhereIs(requestedColumnName, selectOnColumn, selectOnValue);
-        WebElement element = appiumHelper.findElement(cellBy);
-        return enter(element, value, true);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public String valueOfColumnNumberInRowNumber(int columnIndex, int rowIndex) {
-        By by = GridBy.coordinates(columnIndex, rowIndex);
-        return valueFor(by);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public String valueOfInRowNumber(String requestedColumnName, int rowIndex) {
-        By by = GridBy.columnInRow(requestedColumnName, rowIndex);
-        return valueFor(by);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public String valueOfInRowWhereIs(String requestedColumnName, String selectOnColumn, String selectOnValue) {
-        By by = GridBy.columnInRowWhereIs(requestedColumnName, selectOnColumn, selectOnValue);
-        return valueFor(by);
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public String normalizedValueOfColumnNumberInRowNumber(int columnIndex, int rowIndex) {
-        return normalizeValue(valueOfColumnNumberInRowNumber(columnIndex, rowIndex));
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public String normalizedValueOfInRowNumber(String requestedColumnName, int rowIndex) {
-        return normalizeValue(valueOfInRowNumber(requestedColumnName, rowIndex));
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_NULL)
-    public String normalizedValueOfInRowWhereIs(String requestedColumnName, String selectOnColumn, String selectOnValue) {
-        return normalizeValue(valueOfInRowWhereIs(requestedColumnName, selectOnColumn, selectOnValue));
-    }
-
-    @WaitUntil(TimeoutPolicy.RETURN_FALSE)
-    public boolean rowExistsWhereIs(String selectOnColumn, String selectOnValue) {
-        return appiumHelper.findElement(GridBy.rowWhereIs(selectOnColumn, selectOnValue)) != null;
-    }
-
-    @WaitUntil
-    public boolean clickInRowNumber(String place, int rowIndex) {
-        By rowBy = GridBy.rowNumber(rowIndex);
-        return clickInRow(rowBy, place);
-    }
-
-    @WaitUntil
-    public boolean clickInRowWhereIs(String place, String selectOnColumn, String selectOnValue) {
-        By rowBy = GridBy.rowWhereIs(selectOnColumn, selectOnValue);
-        return clickInRow(rowBy, place);
-    }
-
-    protected boolean clickInRow(By rowBy, String place) {
-        return Boolean.TRUE.equals(doInContainer(() -> appiumHelper.findElement(rowBy), () -> click(place)));
-    }
+//    protected List<WebElement> getSelectedOptions(WebElement selectElement) {
+//        SelectHelper s = new SelectHelper(selectElement);
+//        return s.getAllSelectedOptions();
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public List<String> valuesOf(String place) {
+//        return valuesFor(place);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public List<String> valuesOfIn(String place, String container) {
+//        return valuesForIn(place, container);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public List<String> valuesFor(String place) {
+//        return valuesForIn(place, null);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public List<String> valuesForIn(String place, String container) {
+//        WebElement element = getElement(place, container);
+//        if (element == null) {
+//            return emptyList();
+//        } else if ("ul".equalsIgnoreCase(element.getTagName()) || "ol".equalsIgnoreCase(element.getTagName())) {
+//            return getValuesFromList(element);
+//        } else if (isSelect(element)) {
+//            return getValuesFromSelect(element);
+//        } else {
+//            return singletonList(valueFor(element));
+//        }
+//    }
+//
+//    private List<String> getValuesFromList(WebElement element) {
+//        ArrayList<String> values = new ArrayList<>();
+//        List<WebElement> items = element.findElements(By.tagName("li"));
+//        for (WebElement item : items) {
+//            if (item.isDisplayed()) {
+//                values.add(getElementText(item));
+//            }
+//        }
+//        return values;
+//    }
+//
+//    private List<String> getValuesFromSelect(WebElement element) {
+//        ArrayList<String> values = new ArrayList<>();
+//        List<WebElement> options = getSelectedOptions(element);
+//        for (WebElement item : options) {
+//            values.add(getElementText(item));
+//        }
+//        return values;
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public List<String> normalizedValuesOf(String place) {
+//        return normalizedValuesFor(place);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public List<String> normalizedValuesOfIn(String place, String container) {
+//        return normalizedValuesForIn(place, container);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public List<String> normalizedValuesFor(String place) {
+//        return normalizedValuesForIn(place, null);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public List<String> normalizedValuesForIn(String place, String container) {
+//        List<String> values = valuesForIn(place, container);
+//        return normalizeValues(values);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public Integer numberFor(String place) {
+//        Integer number = null;
+//        WebElement element = appiumHelper.findElement(ListItemBy.numbered(place));
+//        if (element != null) {
+//            scrollIfNotOnScreen(element);
+//            number = appiumHelper.getNumberFor(element);
+//        }
+//        return number;
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public Integer numberForIn(String place, String container) {
+//        return doInContainer(container, () -> numberFor(place));
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public List<String> availableOptionsFor(String place) {
+//        ArrayList<String> result = null;
+//        WebElement element = appiumHelper.getElement(place);
+//        if (element != null) {
+//            scrollIfNotOnScreen(element);
+//            result = appiumHelper.getAvailableOptions(element);
+//        }
+//        return result;
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public List<String> normalizedAvailableOptionsFor(String place) {
+//        return normalizeValues(availableOptionsFor(place));
+//    }
+//
+//    @WaitUntil
+//    public boolean clear(String place) {
+//        return clearIn(place, null);
+//    }
+//
+//    @WaitUntil
+//    public boolean clearIn(String place, String container) {
+//        WebElement element = getElement(place, container);
+//        if (element != null) {
+//            return clear(element);
+//        }
+//        return false;
+//    }
+//
+//    @WaitUntil
+//    public boolean enterAsInRowWhereIs(String value, String requestedColumnName, String selectOnColumn, String selectOnValue) {
+//        By cellBy = GridBy.columnInRowWhereIs(requestedColumnName, selectOnColumn, selectOnValue);
+//        WebElement element = appiumHelper.findElement(cellBy);
+//        return enter(element, value, true);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public String valueOfColumnNumberInRowNumber(int columnIndex, int rowIndex) {
+//        By by = GridBy.coordinates(columnIndex, rowIndex);
+//        return valueFor(by);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public String valueOfInRowNumber(String requestedColumnName, int rowIndex) {
+//        By by = GridBy.columnInRow(requestedColumnName, rowIndex);
+//        return valueFor(by);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public String valueOfInRowWhereIs(String requestedColumnName, String selectOnColumn, String selectOnValue) {
+//        By by = GridBy.columnInRowWhereIs(requestedColumnName, selectOnColumn, selectOnValue);
+//        return valueFor(by);
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public String normalizedValueOfColumnNumberInRowNumber(int columnIndex, int rowIndex) {
+//        return normalizeValue(valueOfColumnNumberInRowNumber(columnIndex, rowIndex));
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public String normalizedValueOfInRowNumber(String requestedColumnName, int rowIndex) {
+//        return normalizeValue(valueOfInRowNumber(requestedColumnName, rowIndex));
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_NULL)
+//    public String normalizedValueOfInRowWhereIs(String requestedColumnName, String selectOnColumn, String selectOnValue) {
+//        return normalizeValue(valueOfInRowWhereIs(requestedColumnName, selectOnColumn, selectOnValue));
+//    }
+//
+//    @WaitUntil(TimeoutPolicy.RETURN_FALSE)
+//    public boolean rowExistsWhereIs(String selectOnColumn, String selectOnValue) {
+//        return appiumHelper.findElement(GridBy.rowWhereIs(selectOnColumn, selectOnValue)) != null;
+//    }
+//
+//    @WaitUntil
+//    public boolean clickInRowNumber(String place, int rowIndex) {
+//        By rowBy = GridBy.rowNumber(rowIndex);
+//        return clickInRow(rowBy, place);
+//    }
+//
+//    @WaitUntil
+//    public boolean clickInRowWhereIs(String place, String selectOnColumn, String selectOnValue) {
+//        By rowBy = GridBy.rowWhereIs(selectOnColumn, selectOnValue);
+//        return clickInRow(rowBy, place);
+//    }
+//
+//    protected boolean clickInRow(By rowBy, String place) {
+//        return Boolean.TRUE.equals(doInContainer(() -> appiumHelper.findElement(rowBy), () -> click(place)));
+//    }
 
     protected T getElement(String place, String container) {
         return doInContainer(container, () -> appiumHelper.getElement(place));
     }
 
-    protected String getTextByClassName(String className) {
-        WebElement element = findByClassName(className);
-        return getElementText(element);
-    }
-
-    protected T findByClassName(String className) {
-        return appiumHelper.findElement(By.className(className));
-    }
-
-    protected T findByCss(String cssPattern, String... params) {
-        return appiumHelper.findElement(appiumHelper.byCss(cssPattern, params));
-    }
-
-    protected List<T> findAllByXPath(String xpathPattern, String... params) {
-        return findElements(appiumHelper.byXpath(xpathPattern, params));
-    }
-
-    protected List<T> findAllByCss(String cssPattern, String... params) {
-        return findElements(appiumHelper.byCss(cssPattern, params));
-    }
-
-    public void waitMilliSecondAfterScroll(int msToWait) {
-        waitAfterScroll = msToWait;
-    }
-
-    protected int getWaitAfterScroll() {
-        return waitAfterScroll;
-    }
+//    protected String getTextByClassName(String className) {
+//        WebElement element = findByClassName(className);
+//        return getElementText(element);
+//    }
+//
+//    protected T findByClassName(String className) {
+//        return appiumHelper.findElement(By.className(className));
+//    }
+//
+//    protected T findByCss(String cssPattern, String... params) {
+//        return appiumHelper.findElement(appiumHelper.byCss(cssPattern, params));
+//    }
+//
+//    protected List<T> findAllByXPath(String xpathPattern, String... params) {
+//        return findElements(appiumHelper.byXpath(xpathPattern, params));
+//    }
+//
+//    protected List<T> findAllByCss(String cssPattern, String... params) {
+//        return findElements(appiumHelper.byCss(cssPattern, params));
+//    }
+//
+//    public void waitMilliSecondAfterScroll(int msToWait) {
+//        waitAfterScroll = msToWait;
+//    }
+//
+//    protected int getWaitAfterScroll() {
+//        return waitAfterScroll;
+//    }
 
     protected String getElementText(WebElement element) {
         if (element != null) {
@@ -1187,51 +1270,51 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         return null;
     }
 
-    public boolean scrollUp() {
-        boolean result = appiumHelper.scrollUpOrDown(true);
-        waitAfterScroll(waitAfterScroll);
-        return result;
-    }
-
-    public boolean scrollDown() {
-        boolean result = appiumHelper.scrollUpOrDown(false);
-        waitAfterScroll(waitAfterScroll);
-        return result;
-    }
-
-    public boolean scrollDownTo(String place) {
-        return scrollUpOrDown(place, false);
-    }
-
-    public boolean scrollDownToIn(String place, String container) {
-        return doInContainer(container, () -> scrollDownTo(place));
-    }
-
-    public boolean scrollUpTo(String place) {
-        return scrollUpOrDown(place, true);
-    }
-
-    public boolean scrollUpToIn(String place, String container) {
-        return doInContainer(container, () -> scrollUpTo(place));
-    }
-
-    private boolean scrollUpOrDown(String place, boolean up) {
-        boolean isVisible = isVisibleOnPage(place);
-        if (isVisible) {
-            return true;
-        }
-        int counter = 0;
-        while (counter < 5) {
-            appiumHelper.scrollUpOrDown(up);
-            waitAfterScroll(waitAfterScroll);
-            counter = counter + 1;
-            isVisible = isVisibleOnPage(place);
-            if (isVisible) {
-                return true;
-            }
-        }
-        return false;
-    }
+//    public boolean scrollUp() {
+//        boolean result = appiumHelper.scrollUpOrDown(true);
+//        waitAfterScroll(waitAfterScroll);
+//        return result;
+//    }
+//
+//    public boolean scrollDown() {
+//        boolean result = appiumHelper.scrollUpOrDown(false);
+//        waitAfterScroll(waitAfterScroll);
+//        return result;
+//    }
+//
+//    public boolean scrollDownTo(String place) {
+//        return scrollUpOrDown(place, false);
+//    }
+//
+//    public boolean scrollDownToIn(String place, String container) {
+//        return doInContainer(container, () -> scrollDownTo(place));
+//    }
+//
+//    public boolean scrollUpTo(String place) {
+//        return scrollUpOrDown(place, true);
+//    }
+//
+//    public boolean scrollUpToIn(String place, String container) {
+//        return doInContainer(container, () -> scrollUpTo(place));
+//    }
+//
+//    private boolean scrollUpOrDown(String place, boolean up) {
+//        boolean isVisible = isVisibleOnPage(place);
+//        if (isVisible) {
+//            return true;
+//        }
+//        int counter = 0;
+//        while (counter < 5) {
+//            appiumHelper.scrollUpOrDown(up);
+//            waitAfterScroll(waitAfterScroll);
+//            counter = counter + 1;
+//            isVisible = isVisibleOnPage(place);
+//            if (isVisible) {
+//                return true;
+//            }
+//        }
+//        return false;
+//    }
 
     /**
      * Scrolls window so top of element becomes visible.
@@ -1264,41 +1347,41 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
             scrollTo(element);
         }
     }
-
-    /**
-     * Determines whether element is enabled (i.e. can be clicked).
-     *
-     * @param place element to check.
-     * @return true if element is enabled.
-     */
-    @WaitUntil(TimeoutPolicy.RETURN_FALSE)
-    public boolean isEnabled(String place) {
-        return isEnabledIn(place, null);
-    }
-
-    /**
-     * Determines whether element is enabled (i.e. can be clicked).
-     *
-     * @param place     element to check.
-     * @param container parent of place.
-     * @return true if element is enabled.
-     */
-    @WaitUntil(TimeoutPolicy.RETURN_FALSE)
-    public boolean isEnabledIn(String place, String container) {
-        boolean result = false;
-        T element = getElementToCheckVisibility(place, container);
-        if (element != null) {
-            if ("label".equalsIgnoreCase(element.getTagName())) {
-                // for labels we want to know whether their target is enabled, not the label itself
-                T labelTarget = appiumHelper.getLabelledElement(element);
-                if (labelTarget != null) {
-                    element = labelTarget;
-                }
-            }
-            result = element.isEnabled();
-        }
-        return result;
-    }
+//
+//    /**
+//     * Determines whether element is enabled (i.e. can be clicked).
+//     *
+//     * @param place element to check.
+//     * @return true if element is enabled.
+//     */
+//    @WaitUntil(TimeoutPolicy.RETURN_FALSE)
+//    public boolean isEnabled(String place) {
+//        return isEnabledIn(place, null);
+//    }
+//
+//    /**
+//     * Determines whether element is enabled (i.e. can be clicked).
+//     *
+//     * @param place     element to check.
+//     * @param container parent of place.
+//     * @return true if element is enabled.
+//     */
+//    @WaitUntil(TimeoutPolicy.RETURN_FALSE)
+//    public boolean isEnabledIn(String place, String container) {
+//        boolean result = false;
+//        T element = getElementToCheckVisibility(place, container);
+//        if (element != null) {
+//            if ("label".equalsIgnoreCase(element.getTagName())) {
+//                // for labels we want to know whether their target is enabled, not the label itself
+//                T labelTarget = appiumHelper.getLabelledElement(element);
+//                if (labelTarget != null) {
+//                    element = labelTarget;
+//                }
+//            }
+//            result = element.isEnabled();
+//        }
+//        return result;
+//    }
 
     /**
      * Determines whether element can be see in window.
@@ -1397,60 +1480,60 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         return element != null && appiumHelper.checkVisible(element, checkOnScreen);
     }
 
-    public int numberOfTimesIsVisible(String text) {
-        return numberOfTimesIsVisibleInImpl(text, true);
-    }
-
-    public int numberOfTimesIsVisibleOnPage(String text) {
-        return numberOfTimesIsVisibleInImpl(text, false);
-    }
-
-    public int numberOfTimesIsVisibleIn(String text, String container) {
-        Integer number = doInContainer(container, () -> numberOfTimesIsVisible(text));
-        return number == null ? 0 : number;
-    }
-
-    public int numberOfTimesIsVisibleOnPageIn(String text, String container) {
-        Integer number = doInContainer(container, () -> numberOfTimesIsVisibleOnPage(text));
-        return number == null ? 0 : number;
-    }
-
-    protected int numberOfTimesIsVisibleInImpl(String text, boolean checkOnScreen) {
-        if (implicitFindInFrames) {
-            // sum over iframes
-            AtomicInteger count = new AtomicInteger();
-            new AllFramesDecorator<Integer>(appiumHelper).apply(() -> count.addAndGet(appiumHelper.countVisibleOccurrences(text, checkOnScreen)));
-            return count.get();
-        } else {
-            return appiumHelper.countVisibleOccurrences(text, checkOnScreen);
-        }
-    }
+//    public int numberOfTimesIsVisible(String text) {
+//        return numberOfTimesIsVisibleInImpl(text, true);
+//    }
+//
+//    public int numberOfTimesIsVisibleOnPage(String text) {
+//        return numberOfTimesIsVisibleInImpl(text, false);
+//    }
+//
+//    public int numberOfTimesIsVisibleIn(String text, String container) {
+//        Integer number = doInContainer(container, () -> numberOfTimesIsVisible(text));
+//        return number == null ? 0 : number;
+//    }
+//
+//    public int numberOfTimesIsVisibleOnPageIn(String text, String container) {
+//        Integer number = doInContainer(container, () -> numberOfTimesIsVisibleOnPage(text));
+//        return number == null ? 0 : number;
+//    }
+//
+//    protected int numberOfTimesIsVisibleInImpl(String text, boolean checkOnScreen) {
+//        if (implicitFindInFrames) {
+//            // sum over iframes
+//            AtomicInteger count = new AtomicInteger();
+//            new AllFramesDecorator<Integer>(appiumHelper).apply(() -> count.addAndGet(appiumHelper.countVisibleOccurrences(text, checkOnScreen)));
+//            return count.get();
+//        } else {
+//            return appiumHelper.countVisibleOccurrences(text, checkOnScreen);
+//        }
+//    }
 
     protected T getElementToCheckVisibility(String place, String container) {
         return doInContainer(container, () -> findByTechnicalSelectorOr(place, place1 -> appiumHelper.getElementToCheckVisibility(place1)));
     }
 
-    @WaitUntil
-    public boolean hoverOver(String place) {
-        return hoverOverIn(place, null);
-    }
-
-    @WaitUntil
-    public boolean hoverOverIn(String place, String container) {
-        WebElement element = getElementToClick(place, container);
-        return hoverOver(element);
-    }
-
-    protected boolean hoverOver(WebElement element) {
-        if (element != null) {
-            scrollIfNotOnScreen(element);
-            if (element.isDisplayed()) {
-                appiumHelper.hoverOver(element);
-                return true;
-            }
-        }
-        return false;
-    }
+//    @WaitUntil
+//    public boolean hoverOver(String place) {
+//        return hoverOverIn(place, null);
+//    }
+//
+//    @WaitUntil
+//    public boolean hoverOverIn(String place, String container) {
+//        WebElement element = getElementToClick(place, container);
+//        return hoverOver(element);
+//    }
+//
+//    protected boolean hoverOver(WebElement element) {
+//        if (element != null) {
+//            scrollIfNotOnScreen(element);
+//            if (element.isDisplayed()) {
+//                appiumHelper.hoverOver(element);
+//                return true;
+//            }
+//        }
+//        return false;
+//    }
 
     /**
      * @param timeout number of seconds before waitUntil() throw TimeOutException.
@@ -1485,30 +1568,30 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         return secondsBeforePageLoadTimeout;
     }
 
-    /**
-     * @param directory sets base directory where screenshots will be stored.
-     */
-    public void screenshotBaseDirectory(String directory) {
-        if (directory.equals("") || directory.endsWith("/") || directory.endsWith("\\")) {
-            screenshotBase = directory;
-        } else {
-            screenshotBase = directory + "/";
-        }
-    }
-
-    /**
-     * @param height height to use to display screenshot images
-     */
-    public void screenshotShowHeight(String height) {
-        screenshotHeight = height;
-    }
-
-    /**
-     * @return (escaped) xml content of current page.
-     */
-    public String pageSource() {
-        return getEnvironment().getHtml(appiumHelper.getSourceXml());
-    }
+//    /**
+//     * @param directory sets base directory where screenshots will be stored.
+//     */
+//    public void screenshotBaseDirectory(String directory) {
+//        if (directory.equals("") || directory.endsWith("/") || directory.endsWith("\\")) {
+//            screenshotBase = directory;
+//        } else {
+//            screenshotBase = directory + "/";
+//        }
+//    }
+//
+//    /**
+//     * @param height height to use to display screenshot images
+//     */
+//    public void screenshotShowHeight(String height) {
+//        screenshotHeight = height;
+//    }
+//
+//    /**
+//     * @return (escaped) xml content of current page.
+//     */
+//    public String pageSource() {
+//        return getEnvironment().getHtml(appiumHelper.getSourceXml());
+//    }
 
     protected String savePageSource(String fileName, String linkText) {
         PageSourceSaver saver = appiumHelper.getPageSourceSaver(pageSourceBase);
@@ -1695,15 +1778,15 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         return getSlimFixtureExceptionMessage("timeouts", "timeout", messageBase, e);
     }
 
-    protected void handleRequiredElementNotFound(String toFind) {
-        handleRequiredElementNotFound(toFind, null);
-    }
-
-    protected void handleRequiredElementNotFound(String toFind, Throwable t) {
-        String messageBase = String.format("Unable to find: %s", toFind);
-        String message = getSlimFixtureExceptionMessage("notFound", toFind, messageBase, t);
-        throw new SlimFixtureException(false, message, t);
-    }
+//    protected void handleRequiredElementNotFound(String toFind) {
+//        handleRequiredElementNotFound(toFind, null);
+//    }
+//
+//    protected void handleRequiredElementNotFound(String toFind, Throwable t) {
+//        String messageBase = String.format("Unable to find: %s", toFind);
+//        String message = getSlimFixtureExceptionMessage("notFound", toFind, messageBase, t);
+//        throw new SlimFixtureException(false, message, t);
+//    }
 
     protected String getSlimFixtureExceptionMessage(String screenshotFolder, String screenshotFile, String messageBase, Throwable t) {
         String screenshotBaseName = String.format("%s/%s/%s", screenshotFolder, getClass().getSimpleName(), screenshotFile);
@@ -1778,115 +1861,115 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         return appiumHelper;
     }
 
-    /**
-     * Sets SeleniumHelper to use, for testing purposes.
-     *
-     * @param helper helper to use.
-     */
-    protected void setAppiumHelper(AppiumHelper<T, D> helper) {
-        appiumHelper = helper;
-    }
-
-    protected WebElement getElementToDownload(String place) {
-        SeleniumHelper<T> helper = appiumHelper;
-        return helper.findByTechnicalSelectorOr(place,
-                () -> helper.getLink(place),
-                () -> helper.findElement(AltBy.exact(place)),
-                () -> helper.findElement(AltBy.partial(place)));
-    }
-
-    protected List<T> findElements(By by) {
-        return appiumHelper.findElements(by);
-    }
+//    /**
+//     * Sets SeleniumHelper to use, for testing purposes.
+//     *
+//     * @param helper helper to use.
+//     */
+//    protected void setAppiumHelper(AppiumHelper<T, D> helper) {
+//        appiumHelper = helper;
+//    }
+//
+//    protected WebElement getElementToDownload(String place) {
+//        SeleniumHelper<T> helper = appiumHelper;
+//        return helper.findByTechnicalSelectorOr(place,
+//                () -> helper.getLink(place),
+//                () -> helper.findElement(AltBy.exact(place)),
+//                () -> helper.findElement(AltBy.partial(place)));
+//    }
+//
+//    protected List<T> findElements(By by) {
+//        return appiumHelper.findElements(by);
+//    }
 
     public T findByTechnicalSelectorOr(String place, Function<String, ? extends T> supplierF) {
         return appiumHelper.findByTechnicalSelectorOr(place, () -> supplierF.apply(place));
     }
 
-    /**
-     * Selects a file using the first file upload control.
-     *
-     * @param fileName file to upload
-     * @return true, if a file input was found and file existed.
-     */
-    @WaitUntil
-    public boolean selectFile(String fileName) {
-        return selectFileFor(fileName, "css=input[type='file']");
-    }
-
-    /**
-     * Selects a file using a file upload control.
-     *
-     * @param fileName file to upload
-     * @param place    file input to select the file for
-     * @return true, if place was a file input and file existed.
-     */
-    @WaitUntil
-    public boolean selectFileFor(String fileName, String place) {
-        return selectFileForIn(fileName, place, null);
-    }
-
-    /**
-     * Selects a file using a file upload control.
-     *
-     * @param fileName  file to upload
-     * @param place     file input to select the file for
-     * @param container part of screen containing place
-     * @return true, if place was a file input and file existed.
-     */
-    @WaitUntil
-    public boolean selectFileForIn(String fileName, String place, String container) {
-        boolean result = false;
-        if (fileName != null) {
-            String fullPath = getFilePathFromWikiUrl(fileName);
-            if (new File(fullPath).exists()) {
-                WebElement element = getElementToSelectFile(place, container);
-                if (element != null) {
-                    element.sendKeys(fullPath);
-                    result = true;
-                }
-            } else {
-                throw new SlimFixtureException(false, "Unable to find file: " + fullPath);
-            }
-        }
-        return result;
-    }
-
-    protected T getElementToSelectFile(String place, String container) {
-        T result = null;
-        T element = getElement(place, container);
-        if (element != null
-                && "input".equalsIgnoreCase(element.getTagName())
-                && "file".equalsIgnoreCase(element.getAttribute("type"))) {
-            result = element;
-        }
-        return result;
-    }
-
-    public boolean clickUntilValueOfIs(String clickPlace, String checkPlace, String expectedValue) {
-        return repeatUntil(getClickUntilValueIs(clickPlace, checkPlace, expectedValue));
-    }
-
-    public boolean clickUntilValueOfIsNot(String clickPlace, String checkPlace, String expectedValue) {
-        return repeatUntilNot(getClickUntilValueIs(clickPlace, checkPlace, expectedValue));
-    }
-
-    protected RepeatCompletion getClickUntilValueIs(String clickPlace, String checkPlace, String expectedValue) {
-        String place = cleanupValue(clickPlace);
-        return getClickUntilCompletion(place, checkPlace, expectedValue);
-    }
-
-    protected RepeatCompletion getClickUntilCompletion(String place, String checkPlace, String expectedValue) {
-        return new ConditionBasedRepeatUntil(true, d -> click(place), d -> checkValueIs(checkPlace, expectedValue));
-    }
-
-    protected boolean repeatUntil(ExpectedCondition<Object> actionCondition, ExpectedCondition<Boolean> finishCondition) {
-        return repeatUntil(new ConditionBasedRepeatUntil(true, actionCondition, finishCondition));
-    }
-
-    protected boolean repeatUntilIsNot(ExpectedCondition<Object> actionCondition, ExpectedCondition<Boolean> finishCondition) {
-        return repeatUntilNot(new ConditionBasedRepeatUntil(true, actionCondition, finishCondition));
-    }
+//    /**
+//     * Selects a file using the first file upload control.
+//     *
+//     * @param fileName file to upload
+//     * @return true, if a file input was found and file existed.
+//     */
+//    @WaitUntil
+//    public boolean selectFile(String fileName) {
+//        return selectFileFor(fileName, "css=input[type='file']");
+//    }
+//
+//    /**
+//     * Selects a file using a file upload control.
+//     *
+//     * @param fileName file to upload
+//     * @param place    file input to select the file for
+//     * @return true, if place was a file input and file existed.
+//     */
+//    @WaitUntil
+//    public boolean selectFileFor(String fileName, String place) {
+//        return selectFileForIn(fileName, place, null);
+//    }
+//
+//    /**
+//     * Selects a file using a file upload control.
+//     *
+//     * @param fileName  file to upload
+//     * @param place     file input to select the file for
+//     * @param container part of screen containing place
+//     * @return true, if place was a file input and file existed.
+//     */
+//    @WaitUntil
+//    public boolean selectFileForIn(String fileName, String place, String container) {
+//        boolean result = false;
+//        if (fileName != null) {
+//            String fullPath = getFilePathFromWikiUrl(fileName);
+//            if (new File(fullPath).exists()) {
+//                WebElement element = getElementToSelectFile(place, container);
+//                if (element != null) {
+//                    element.sendKeys(fullPath);
+//                    result = true;
+//                }
+//            } else {
+//                throw new SlimFixtureException(false, "Unable to find file: " + fullPath);
+//            }
+//        }
+//        return result;
+//    }
+//
+//    protected T getElementToSelectFile(String place, String container) {
+//        T result = null;
+//        T element = getElement(place, container);
+//        if (element != null
+//                && "input".equalsIgnoreCase(element.getTagName())
+//                && "file".equalsIgnoreCase(element.getAttribute("type"))) {
+//            result = element;
+//        }
+//        return result;
+//    }
+//
+//    public boolean clickUntilValueOfIs(String clickPlace, String checkPlace, String expectedValue) {
+//        return repeatUntil(getClickUntilValueIs(clickPlace, checkPlace, expectedValue));
+//    }
+//
+//    public boolean clickUntilValueOfIsNot(String clickPlace, String checkPlace, String expectedValue) {
+//        return repeatUntilNot(getClickUntilValueIs(clickPlace, checkPlace, expectedValue));
+//    }
+//
+//    protected RepeatCompletion getClickUntilValueIs(String clickPlace, String checkPlace, String expectedValue) {
+//        String place = cleanupValue(clickPlace);
+//        return getClickUntilCompletion(place, checkPlace, expectedValue);
+//    }
+//
+//    protected RepeatCompletion getClickUntilCompletion(String place, String checkPlace, String expectedValue) {
+//        return new ConditionBasedRepeatUntil(true, d -> click(place), d -> checkValueIs(checkPlace, expectedValue));
+//    }
+//
+//    protected boolean repeatUntil(ExpectedCondition<Object> actionCondition, ExpectedCondition<Boolean> finishCondition) {
+//        return repeatUntil(new ConditionBasedRepeatUntil(true, actionCondition, finishCondition));
+//    }
+//
+//    protected boolean repeatUntilIsNot(ExpectedCondition<Object> actionCondition, ExpectedCondition<Boolean> finishCondition) {
+//        return repeatUntilNot(new ConditionBasedRepeatUntil(true, actionCondition, finishCondition));
+//    }
 
     protected <T> ExpectedCondition<T> wrapConditionForFramesIfNeeded(ExpectedCondition<T> condition) {
         if (implicitFindInFrames) {
@@ -1895,35 +1978,35 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         return condition;
     }
 
-    @Override
-    protected boolean repeatUntil(RepeatCompletion repeat) {
-        // During repeating we reduce the timeout used for finding elements,
-        // but the page load timeout is kept as-is (which takes extra work because secondsBeforeTimeout(int)
-        // also changes that.
-        int previousTimeout = secondsBeforeTimeout;
-        int pageLoadTimeout = secondsBeforePageLoadTimeout();
-        try {
-            int timeoutDuringRepeat = Math.max((Math.toIntExact(repeatInterval() / 1000)), 1);
-            secondsBeforeTimeout(timeoutDuringRepeat);
-            secondsBeforePageLoadTimeout(pageLoadTimeout);
-            return super.repeatUntil(repeat);
-        } finally {
-            secondsBeforeTimeout(previousTimeout);
-            secondsBeforePageLoadTimeout(pageLoadTimeout);
-        }
-    }
-
-    protected boolean checkValueIs(String place, String expectedValue) {
-        boolean match;
-        String actual = valueOf(place);
-        if (expectedValue == null) {
-            match = actual == null;
-        } else {
-            match = cleanExpectedValue(expectedValue).equals(actual);
-        }
-        return match;
-    }
-
+//    @Override
+//    protected boolean repeatUntil(RepeatCompletion repeat) {
+//        // During repeating we reduce the timeout used for finding elements,
+//        // but the page load timeout is kept as-is (which takes extra work because secondsBeforeTimeout(int)
+//        // also changes that.
+//        int previousTimeout = secondsBeforeTimeout;
+//        int pageLoadTimeout = secondsBeforePageLoadTimeout();
+//        try {
+//            int timeoutDuringRepeat = Math.max((Math.toIntExact(repeatInterval() / 1000)), 1);
+//            secondsBeforeTimeout(timeoutDuringRepeat);
+//            secondsBeforePageLoadTimeout(pageLoadTimeout);
+//            return super.repeatUntil(repeat);
+//        } finally {
+//            secondsBeforeTimeout(previousTimeout);
+//            secondsBeforePageLoadTimeout(pageLoadTimeout);
+//        }
+//    }
+//
+//    protected boolean checkValueIs(String place, String expectedValue) {
+//        boolean match;
+//        String actual = valueOf(place);
+//        if (expectedValue == null) {
+//            match = actual == null;
+//        } else {
+//            match = cleanExpectedValue(expectedValue).equals(actual);
+//        }
+//        return match;
+//    }
+//
     protected class ConditionBasedRepeatUntil extends FunctionalCompletion {
         public ConditionBasedRepeatUntil(boolean wrapIfNeeded,
                                          ExpectedCondition<?> repeatCondition,
@@ -1953,66 +2036,66 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         this.implicitFindInFrames = implicitFindInFrames;
     }
 
-    /**
-     * Simulates 'select all' (e.g. Ctrl+A on Windows) on the active element.
-     *
-     * @return whether an active element was found.
-     */
-    @WaitUntil
-    public boolean selectAll() {
-        return appiumHelper.selectAll();
-    }
-
-    /**
-     * Simulates 'copy' (e.g. Ctrl+C on Windows) on the active element, copying the current selection to the clipboard.
-     *
-     * @return whether an active element was found.
-     */
-    @WaitUntil
-    public boolean copy() {
-        return appiumHelper.copy();
-    }
-
-    /**
-     * Simulates 'cut' (e.g. Ctrl+X on Windows) on the active element, copying the current selection to the clipboard
-     * and removing that selection.
-     *
-     * @return whether an active element was found.
-     */
-    @WaitUntil
-    public boolean cut() {
-        return appiumHelper.cut();
-    }
-
-    /**
-     * Simulates 'paste' (e.g. Ctrl+V on Windows) on the active element, copying the current clipboard
-     * content to the currently active element.
-     *
-     * @return whether an active element was found.
-     */
-    @WaitUntil
-    public boolean paste() {
-        return appiumHelper.paste();
-    }
-
-    /**
-     * @return text currently selected in window, or empty string if no text is selected.
-     */
-    public String getSelectionText() {
-        return appiumHelper.getSelectionText();
-    }
-
-    /**
-     * @return should 'normalized' functions remove starting and trailing whitespace?
-     */
-    public boolean trimOnNormalize() {
-        return trimOnNormalize;
-    }
-
-    /**
-     * @param trimOnNormalize should 'normalized' functions remove starting and trailing whitespace?
-     */
-    public void setTrimOnNormalize(boolean trimOnNormalize) {
-        this.trimOnNormalize = trimOnNormalize;
-    }
+//    /**
+//     * Simulates 'select all' (e.g. Ctrl+A on Windows) on the active element.
+//     *
+//     * @return whether an active element was found.
+//     */
+//    @WaitUntil
+//    public boolean selectAll() {
+//        return appiumHelper.selectAll();
+//    }
+//
+//    /**
+//     * Simulates 'copy' (e.g. Ctrl+C on Windows) on the active element, copying the current selection to the clipboard.
+//     *
+//     * @return whether an active element was found.
+//     */
+//    @WaitUntil
+//    public boolean copy() {
+//        return appiumHelper.copy();
+//    }
+//
+//    /**
+//     * Simulates 'cut' (e.g. Ctrl+X on Windows) on the active element, copying the current selection to the clipboard
+//     * and removing that selection.
+//     *
+//     * @return whether an active element was found.
+//     */
+//    @WaitUntil
+//    public boolean cut() {
+//        return appiumHelper.cut();
+//    }
+//
+//    /**
+//     * Simulates 'paste' (e.g. Ctrl+V on Windows) on the active element, copying the current clipboard
+//     * content to the currently active element.
+//     *
+//     * @return whether an active element was found.
+//     */
+//    @WaitUntil
+//    public boolean paste() {
+//        return appiumHelper.paste();
+//    }
+//
+//    /**
+//     * @return text currently selected in window, or empty string if no text is selected.
+//     */
+//    public String getSelectionText() {
+//        return appiumHelper.getSelectionText();
+//    }
+//
+//    /**
+//     * @return should 'normalized' functions remove starting and trailing whitespace?
+//     */
+//    public boolean trimOnNormalize() {
+//        return trimOnNormalize;
+//    }
+//
+//    /**
+//     * @param trimOnNormalize should 'normalized' functions remove starting and trailing whitespace?
+//     */
+//    public void setTrimOnNormalize(boolean trimOnNormalize) {
+//        this.trimOnNormalize = trimOnNormalize;
+//    }
 }
