@@ -158,16 +158,18 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         int x = pinchTarget.getLocation().getX() + pinchTarget.getSize().getWidth() / 2;
         int y = pinchTarget.getLocation().getY() + pinchTarget.getSize().getHeight() / 2;
 
-        PointOption pinchPointOption1 = PointOption.point(x,y - 20);
-        PointOption pinchPointOption2 = PointOption.point(x,y + 20);
-        PointOption moveToOption1 = PointOption.point(x,y - offset);
-        PointOption moveToOption2 = PointOption.point(x,y + offset);
+        PointOption pinchPointOption1 = PointOption.point(x, y - 20);
+        PointOption pinchPointOption2 = PointOption.point(x, y + 20);
+        PointOption moveToOption1 = PointOption.point(x, y - offset);
+        PointOption moveToOption2 = PointOption.point(x, y + offset);
 
         TouchAction finger1 = new TouchAction(getDriver());
-        finger1.press(pinchPointOption1).moveTo(moveToOption1).release();
+        // longPress instead of press implemented for iOS
+        finger1.longPress(pinchPointOption1).moveTo(moveToOption1).release();
 
         TouchAction finger2 = new TouchAction(getDriver());
-        finger2.press(pinchPointOption2).moveTo(moveToOption2).release();
+        // longPress instead of press implemented for iOS
+        finger2.longPress(pinchPointOption2).moveTo(moveToOption2).release();
 
         try {
             new MultiTouchAction(getDriver())
@@ -199,16 +201,18 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         int x = pinchTarget.getLocation().getX() + pinchTarget.getSize().getWidth() / 2;
         int y = pinchTarget.getLocation().getY() + pinchTarget.getSize().getHeight() / 2;
 
-        PointOption pinchPointOption1 = PointOption.point(x,y - offset);
-        PointOption pinchPointOption2 = PointOption.point(x,y + offset);
-        PointOption moveToOption1 = PointOption.point(x,y - 20);
-        PointOption moveToOption2 = PointOption.point(x,y + 20);
+        PointOption pinchPointOption1 = PointOption.point(x, y - offset);
+        PointOption pinchPointOption2 = PointOption.point(x, y + offset);
+        PointOption moveToOption1 = PointOption.point(x, y - 20);
+        PointOption moveToOption2 = PointOption.point(x, y + 20);
 
         TouchAction finger1 = new TouchAction(getDriver());
-        finger1.press(pinchPointOption1).moveTo(moveToOption1).release();
+        // longPress instead of press implemented for iOS
+        finger1.longPress(pinchPointOption1).moveTo(moveToOption1).release();
 
         TouchAction finger2 = new TouchAction(getDriver());
-        finger2.press(pinchPointOption2).moveTo(moveToOption2).release();
+        // longPress instead of press implemented for iOS
+        finger2.longPress(pinchPointOption2).moveTo(moveToOption2).release();
 
         try {
             new MultiTouchAction(getDriver())
@@ -294,11 +298,11 @@ public abstract class AppiumTest<T extends MobileElement, D extends AppiumDriver
         T elementToDrag = this.getElement(dragPlace, null);
         T dragTarget = this.getElement(targetPlace, null);
 
-        if(elementToDrag == null || dragTarget == null) {
+        if (elementToDrag == null || dragTarget == null) {
             return false;
         }
-
-        action.press(PointOption.point(elementToDrag.getCenter()))
+        //longPress instead op press because of iOS
+        action.longPress(PointOption.point(elementToDrag.getCenter()))
                 .waitAction(WaitOptions.waitOptions(Duration.ofMillis(200)))
                 .moveTo(PointOption.point(dragTarget.getCenter()))
                 .waitAction(WaitOptions.waitOptions(Duration.ofMillis(50)))
